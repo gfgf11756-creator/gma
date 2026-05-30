@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAMSTR — Idle Clicker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b10;--bg2:#0d1117;--bg3:#111820;--line:#1e2a38;
+  --gold:#c8960c;--gold2:#f0b429;--gold3:#ffe08a;
+  --cyan:#0ff;--cyan2:#00d4ff;--red:#ff4040;--green:#39d353;--purple:#a78bfa;
+  --text:#9eb3c8;--text2:#c8dde8;--white:#e8f4ff;
+  --border:rgba(255,255,255,0.06);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text2);font-family:'Space Mono',monospace;font-size:12px;user-select:none}
+#bgCanvas{position:fixed;inset:0;z-index:0;opacity:.35}
+#root{position:relative;z-index:1;height:100vh;display:grid;grid-template-columns:220px 1fr 220px;grid-template-rows:44px 1fr 32px}
+
+/* TOPBAR */
+#topbar{grid-column:1/-1;display:flex;align-items:center;background:rgba(8,11,16,.97);border-bottom:1px solid var(--border)}
+.tb-logo{padding:0 14px;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--gold2);letter-spacing:3px;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tb-stats{display:flex;flex:1;height:100%}
+.tb-stat{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;border-right:1px solid var(--border);padding:2px 4px}
+.tb-stat .lbl{font-size:7px;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-bottom:1px}
+.tb-stat .val{font-size:12px;color:var(--gold2);font-weight:700}
+.tb-event{padding:0 10px;border-left:1px solid var(--border);height:100%;display:flex;align-items:center;gap:6px;min-width:180px}
+#event-label{font-size:9px;color:var(--cyan2)}
+#event-timer{font-size:11px;color:var(--cyan);font-weight:700}
+
+/* PANELS */
+#left{overflow-y:auto;border-right:1px solid var(--border);background:var(--bg2)}
+#left::-webkit-scrollbar{width:3px}#left::-webkit-scrollbar-thumb{background:var(--line)}
+#center{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 0;gap:8px;overflow:hidden}
+#right{overflow-y:auto;border-left:1px solid var(--border);background:var(--bg2)}
+#right::-webkit-scrollbar{width:3px}#right::-webkit-scrollbar-thumb{background:var(--line)}
+#bottom{grid-column:1/-1;background:rgba(8,11,16,.97);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:9px;color:var(--text);letter-spacing:1px}
+
+.sec{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:8px 10px 5px;color:var(--text);opacity:.4;border-bottom:1px solid var(--border)}
+.tabs{display:flex;border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:7px 0;text-align:center;font-size:8px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--text);border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:var(--gold2);border-bottom-color:var(--gold)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* SHOP */
+.shop-item{display:flex;align-items:center;gap:7px;padding:7px 9px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;position:relative}
+.shop-item:hover{background:rgba(255,255,255,.03)}
+.shop-item.can-buy{border-left:2px solid var(--gold)}
+.shop-item.can-buy:hover{background:rgba(200,150,12,.06)}
+.si-icon{font-size:18px;flex-shrink:0;width:22px;text-align:center}
+.si-body{flex:1;min-width:0}
+.si-name{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.si-desc{font-size:8px;color:var(--text);margin-top:1px}
+.si-cost{font-size:9px;color:var(--gold2);font-weight:700}
+.si-lvl{position:absolute;top:5px;right:7px;font-size:7px;color:var(--text);opacity:.5}
+.si-bar{height:2px;background:var(--line);border-radius:1px;margin-top:3px}
+.si-bar-fill{height:100%;background:var(--gold);border-radius:1px;transition:width .3s}
+
+/* HAMSTER */
+#hamster-zone{position:relative;width:160px;height:160px;flex-shrink:0}
+#hring{position:absolute;inset:-10px;border-radius:50%;border:1px solid var(--line);animation:spin 8s linear infinite}
+#hring2{position:absolute;inset:-22px;border-radius:50%;border:1px solid rgba(255,255,255,.03);animation:spin 20s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hring-dot{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--gold);top:50%;left:50%;transform-origin:0 0}
+#hamster-btn{position:relative;width:160px;height:160px;border-radius:50%;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;outline:none;transition:transform .07s;z-index:2}
+#hamster-btn:active{transform:scale(.88)}
+#hamster-btn::after{content:'';position:absolute;inset:0;border-radius:50%;border:1px solid rgba(200,150,12,.2);pointer-events:none;animation:hpulse 3s ease-in-out infinite}
+@keyframes hpulse{0%,100%{box-shadow:0 0 0 0 rgba(200,150,12,.15)}50%{box-shadow:0 0 0 16px rgba(200,150,12,0)}}
+#hemoji{font-size:90px;line-height:1;filter:drop-shadow(0 4px 18px rgba(200,150,12,.4));transition:filter .3s}
+.cfloat{position:fixed;pointer-events:none;z-index:9999;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:var(--gold2);text-shadow:0 0 10px var(--gold);animation:cfloat .8s ease-out forwards}
+@keyframes cfloat{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-65px) scale(.6)}}
+
+/* STATS BOX */
+.sbox{width:calc(100% - 20px);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+.sbox-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0}
+.sbox-lbl{font-size:8px;letter-spacing:1px;text-transform:uppercase;opacity:.5}
+.sbox-val{font-size:10px;color:var(--gold2);font-weight:700}
+
+/* MULT + STAGE */
+#mult-display{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid rgba(200,150,12,.2);border-radius:3px;padding:4px 12px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--gold2)}
+#mult-display .mx{color:var(--gold3);font-size:14px}
+#stage-display{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:2px;color:var(--text);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+#stage-bar-wrap{width:120px;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+#stage-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold3));border-radius:2px;transition:width .4s}
+
+/* REBIRTH */
+#rebirth-panel{width:calc(100% - 20px);background:linear-gradient(135deg,rgba(120,40,200,.1),rgba(80,20,140,.07));border:1px solid rgba(167,139,250,.15);border-radius:4px;padding:10px}
+#rebirth-panel h3{font-family:'Syne',sans-serif;font-size:8px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--purple);margin-bottom:7px}
+.rb-row{display:flex;justify-content:space-between;font-size:9px;padding:1px 0}
+.rb-row .rv{color:var(--purple);font-weight:700}
+.rb-prog{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin:7px 0}
+.rb-prog-fill{height:100%;background:linear-gradient(90deg,#7c3aed,var(--purple));border-radius:2px;transition:width .3s}
+#rebirth-btn{width:100%;padding:8px;background:linear-gradient(135deg,#3b1d6e,#1e0e40);border:1px solid rgba(167,139,250,.3);border-radius:3px;color:var(--purple);font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+#rebirth-btn:hover:not(:disabled){background:linear-gradient(135deg,#4c2484,#2a1260);border-color:var(--purple);box-shadow:0 0 18px rgba(167,139,250,.2);color:var(--white)}
+#rebirth-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* TECH */
+.tech-node{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--border);cursor:pointer;transition:all .12s;position:relative}
+.tech-node:hover:not(.locked){background:rgba(255,255,255,.03)}
+.tech-node.unlocked{border-left:2px solid var(--green)}
+.tech-node.locked{opacity:.25;cursor:not-allowed}
+.tech-node.can-unlock{border-left:2px solid var(--cyan2)}
+.tech-node.can-unlock:hover{background:rgba(0,212,255,.05)}
+.tn-icon{font-size:14px;flex-shrink:0}
+.tn-name{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--white)}
+.tn-desc{font-size:8px;color:var(--text);margin-top:1px}
+.tn-cost{font-size:8px;margin-top:1px}
+.tn-cost.coins{color:var(--gold2)}.tn-cost.rb{color:var(--purple)}
+.tn-badge{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:7px;letter-spacing:1px;padding:2px 5px;border-radius:2px}
+.tn-badge.ok{background:rgba(57,211,83,.1);color:var(--green);border:1px solid rgba(57,211,83,.2)}
+.tn-badge.req{background:rgba(255,64,64,.08);color:var(--red);border:1px solid rgba(255,64,64,.15)}
+
+/* ACH */
+.ach{display:flex;align-items:center;gap:7px;padding:5px 9px;border-bottom:1px solid var(--border)}
+.ach.locked{opacity:.2}
+.ach-icon{font-size:14px}
+.ach-name{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--white)}
+.ach-desc{font-size:7px;color:var(--text);margin-top:1px}
+.ach-got{font-size:7px;color:var(--green)}
+
+/* LEADERBOARD */
+.lb-entry{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--border);position:relative;transition:background .1s}
+.lb-entry:hover{background:rgba(255,255,255,.02)}
+.lb-entry.me{background:rgba(200,150,12,.06);border-left:2px solid var(--gold)}
+.lb-entry.banned{opacity:.3;text-decoration:line-through}
+.lb-rank{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;width:22px;text-align:center;flex-shrink:0}
+.lb-rank.gold{color:#ffd700}.lb-rank.silver{color:#c0c0c0}.lb-rank.bronze{color:#cd7f32}.lb-rank.normal{color:var(--text);opacity:.5}
+.lb-info{flex:1;min-width:0}
+.lb-name{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--white);display:flex;align-items:center;gap:4px}
+.lb-tag{font-size:7px;padding:1px 4px;border-radius:2px;letter-spacing:1px}
+.lb-tag.admin{background:rgba(255,0,80,.15);color:#ff0050;border:1px solid rgba(255,0,80,.3)}
+.lb-tag.banned-tag{background:rgba(255,64,64,.1);color:var(--red)}
+.lb-score{font-size:8px;color:var(--text);margin-top:1px}
+.lb-coins{font-size:10px;color:var(--gold2);font-weight:700;white-space:nowrap}
+.lb-actions{display:flex;gap:4px;margin-left:4px}
+.lb-act-btn{font-size:7px;padding:2px 6px;border-radius:2px;border:1px solid;cursor:pointer;letter-spacing:1px;font-family:'Syne',sans-serif;font-weight:700;transition:all .12s;background:transparent}
+.lb-act-btn.kick{border-color:rgba(255,64,64,.3);color:var(--red)}.lb-act-btn.kick:hover{background:rgba(255,64,64,.15)}
+.lb-act-btn.ban{border-color:rgba(255,0,80,.3);color:#ff0050}.lb-act-btn.ban:hover{background:rgba(255,0,80,.15)}
+.lb-act-btn.give{border-color:rgba(200,150,12,.3);color:var(--gold2)}.lb-act-btn.give:hover{background:rgba(200,150,12,.1)}
+.lb-act-btn.unban{border-color:rgba(57,211,83,.3);color:var(--green)}.lb-act-btn.unban:hover{background:rgba(57,211,83,.1)}
+.lb-act-btn.setcoins{border-color:rgba(0,212,255,.3);color:var(--cyan2)}.lb-act-btn.setcoins:hover{background:rgba(0,212,255,.1)}
+.lb-pulse{animation:lbpulse .5s ease}
+@keyframes lbpulse{0%{background:rgba(200,150,12,.2)}100%{background:transparent}}
+#lb-join-wrap{padding:8px 9px;border-bottom:1px solid var(--border);display:flex;gap:5px}
+#lb-join-inp{flex:1;background:#060a10;border:1px solid rgba(255,255,255,.08);border-radius:3px;color:var(--white);font-family:'Space Mono',monospace;font-size:10px;padding:5px 7px;outline:none}
+#lb-join-inp:focus{border-color:rgba(200,150,12,.4)}
+.lb-join-btn{padding:5px 10px;border-radius:3px;border:1px solid rgba(200,150,12,.3);background:rgba(200,150,12,.08);color:var(--gold2);font-family:'Syne',sans-serif;font-size:8px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .15s;white-space:nowrap}
+.lb-join-btn:hover{background:rgba(200,150,12,.2);border-color:var(--gold2)}
+#lb-status{font-size:8px;color:var(--green);padding:3px 9px;min-height:16px;letter-spacing:1px}
+.lb-live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--red);margin-right:5px;animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* NOTIF */
+#notif{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(10,15,24,.97);border:1px solid var(--border);border-radius:4px;padding:9px 18px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--white);pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap}
+
+/* ── ADMIN PANEL ── */
+#admin-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+#admin-overlay.show{display:flex}
+#admin-box{background:#070c14;border:1px solid rgba(255,0,80,.25);border-radius:6px;width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 0 80px rgba(255,0,80,.12)}
+#admin-box::-webkit-scrollbar{width:3px}#admin-box::-webkit-scrollbar-thumb{background:#ff0050}
+.adm-top{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid rgba(255,0,80,.2);background:rgba(255,0,80,.04);position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
+.adm-top h2{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;letter-spacing:4px;color:#ff0050;text-transform:uppercase}
+.adm-close{background:none;border:1px solid rgba(255,0,80,.3);color:#ff0050;border-radius:3px;padding:4px 10px;cursor:pointer;font-size:10px;letter-spacing:1px;transition:all .15s}
+.adm-close:hover{background:rgba(255,0,80,.15);border-color:#ff0050}
+.adm-section{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04)}
+.adm-section h3{font-size:7px;letter-spacing:3px;text-transform:uppercase;color:#ff0050;opacity:.7;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.adm-row{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap}
+.adm-lbl{font-size:9px;color:var(--text);width:120px;flex-shrink:0}
+.adm-inp{flex:1;min-width:80px;background:#060a10;border:1px solid rgba(255,255,255,.08);border-radius:3px;color:var(--white);font-family:'Space Mono',monospace;font-size:10px;padding:5px 7px;outline:none;transition:border .15s}
+.adm-inp:focus{border-color:rgba(255,0,80,.4)}
+.adm-btn{padding:5px 12px;border-radius:3px;border:1px solid;cursor:pointer;font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all .15s;white-space:nowrap;background:transparent}
+.adm-btn.red{border-color:rgba(255,0,80,.35);color:#ff0050}.adm-btn.red:hover{background:rgba(255,0,80,.2);border-color:#ff0050}
+.adm-btn.green{border-color:rgba(57,211,83,.3);color:var(--green)}.adm-btn.green:hover{background:rgba(57,211,83,.15)}
+.adm-btn.cyan{border-color:rgba(0,212,255,.3);color:var(--cyan2)}.adm-btn.cyan:hover{background:rgba(0,212,255,.12)}
+.adm-btn.gold{border-color:rgba(200,150,12,.35);color:var(--gold2)}.adm-btn.gold:hover{background:rgba(200,150,12,.15)}
+.adm-btn.purple{border-color:rgba(167,139,250,.3);color:var(--purple)}.adm-btn.purple:hover{background:rgba(167,139,250,.15)}
+.adm-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.adm-danger{background:rgba(255,0,80,.03)}
+
+/* ADMIN PLAYER LIST */
+.adm-player{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.adm-player-name{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--white);width:100px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-player-coins{font-size:9px;color:var(--gold2);width:70px;flex-shrink:0}
+.adm-player-btns{display:flex;gap:4px;flex-wrap:wrap}
+
+/* LOGIN */
+#admin-login{display:flex;flex-direction:column;align-items:center;gap:12px;padding:36px 28px}
+#admin-login .lock{font-size:36px;filter:drop-shadow(0 0 18px #ff005055)}
+#admin-login h2{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:4px;color:#ff0050;text-transform:uppercase}
+#admin-login p{font-size:8px;color:var(--text);letter-spacing:1px;text-align:center;opacity:.6}
+#admin-pwd{width:100%;background:#060a10;border:1px solid rgba(255,0,80,.3);border-radius:3px;color:var(--white);font-family:'Space Mono',monospace;font-size:14px;padding:10px 14px;outline:none;text-align:center;letter-spacing:4px;transition:border .2s}
+#admin-pwd:focus{border-color:#ff0050;box-shadow:0 0 18px rgba(255,0,80,.15)}
+#admin-login-err{font-size:8px;color:#ff0050;letter-spacing:1px;min-height:12px}
+#admin-login-btn{width:100%;padding:9px;background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.4);border-radius:3px;color:#ff0050;font-family:'Syne',sans-serif;font-size:9px;font-weight:800;letter-spacing:3px;cursor:pointer;text-transform:uppercase;transition:all .15s}
+#admin-login-btn:hover{background:rgba(255,0,80,.2);border-color:#ff0050;box-shadow:0 0 18px rgba(255,0,80,.2)}
+#admin-panel-content{display:none}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div id="root">
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="tb-logo">🐹 HAMSTR</div>
+  <div class="tb-stats">
+    <div class="tb-stat"><div class="lbl">Монеты</div><div class="val" id="t-coins">0</div></div>
+    <div class="tb-stat"><div class="lbl">Клик</div><div class="val" id="t-cpc">1</div></div>
+    <div class="tb-stat"><div class="lbl">/сек</div><div class="val" id="t-cps">0</div></div>
+    <div class="tb-stat"><div class="lbl">Ребитков</div><div class="val" id="t-rb">0</div></div>
+    <div class="tb-stat"><div class="lbl">Множитель</div><div class="val" id="t-mult">×1</div></div>
+  </div>
+  <div class="tb-event">
+    <div id="event-label">— нет события —</div>
+    <div id="event-timer"></div>
+  </div>
+</div>
+
+<!-- LEFT: SHOP -->
+<div id="left">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('shop')">Магазин</div>
+    <div class="tab" onclick="switchTab('tech')">Технологии</div>
+  </div>
+  <div id="tab-shop" class="tab-content active">
+    <div class="sec">Клик</div><div id="click-shop"></div>
+    <div class="sec">Авто</div><div id="auto-shop"></div>
+    <div class="sec">Усилители</div><div id="boost-shop"></div>
+  </div>
+  <div id="tab-tech" class="tab-content">
+    <div class="sec">Дерево технологий</div>
+    <div id="tech-tree"></div>
+  </div>
+</div>
+
+<!-- CENTER -->
+<div id="center">
+  <div id="stage-display">
+    <span id="stage-name">Начинающий</span>
+    <div id="stage-bar-wrap"><div id="stage-bar" style="width:0%"></div></div>
+    <span id="stage-pct">0%</span>
+  </div>
+  <div id="mult-display"><span class="mx" id="mult-val">×1</span> множитель <span id="mult-src" style="opacity:.5;font-size:8px"></span></div>
+  <div id="hamster-zone">
+    <div id="hring">
+      <div class="hring-dot" style="transform:rotate(0deg) translateX(78px) translate(-2px,-2px)"></div>
+      <div class="hring-dot" style="transform:rotate(120deg) translateX(78px) translate(-2px,-2px)"></div>
+      <div class="hring-dot" style="transform:rotate(240deg) translateX(78px) translate(-2px,-2px)"></div>
+    </div>
+    <div id="hring2"></div>
+    <button id="hamster-btn" onclick="doClick(event)"><span id="hemoji">🐹</span></button>
+  </div>
+  <div class="sbox" style="width:200px">
+    <div class="sbox-row"><span class="sbox-lbl">Всего кликов</span><span class="sbox-val" id="s-clicks">0</span></div>
+    <div class="sbox-row"><span class="sbox-lbl">Всего монет</span><span class="sbox-val" id="s-total">0</span></div>
+    <div class="sbox-row"><span class="sbox-lbl">Монет/сек</span><span class="sbox-val" id="s-cps">0</span></div>
+    <div class="sbox-row"><span class="sbox-lbl">Крит. шанс</span><span class="sbox-val" id="s-crit">0%</span></div>
+    <div class="sbox-row"><span class="sbox-lbl">Крит. множ.</span><span class="sbox-val" id="s-critm">×2</span></div>
+  </div>
+  <div id="rebirth-panel">
+    <h3>♻ Ребитк</h3>
+    <div class="rb-row"><span>Ребитков:</span><span class="rv" id="rb-cnt">0/20</span></div>
+    <div class="rb-row"><span>Бонус:</span><span class="rv" id="rb-bonus">+0.0%</span></div>
+    <div class="rb-row"><span>×2 мульт:</span><span class="rv" id="rb-mults">0 шт.</span></div>
+    <div class="rb-row"><span>Нужно:</span><span class="rv" id="rb-req">1M</span></div>
+    <div class="rb-prog"><div class="rb-prog-fill" id="rb-prog" style="width:0%"></div></div>
+    <button id="rebirth-btn" onclick="doRebirth()" disabled>↺ РЕБИТК</button>
+  </div>
+</div>
+
+<!-- RIGHT: LEADERBOARD + ACH + LOG -->
+<div id="right">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTabR('lb')">🏆 Топ</div>
+    <div class="tab" onclick="switchTabR('ach')">Ачивки</div>
+    <div class="tab" onclick="switchTabR('log')">Лог</div>
+  </div>
+  <div id="tab-lb" class="tab-content active">
+    <div id="lb-join-wrap">
+      <input id="lb-join-inp" placeholder="Твоё имя..." maxlength="16" onkeydown="if(event.key==='Enter')lbJoin()">
+      <button class="lb-join-btn" onclick="lbJoin()">ИГРАТЬ</button>
+    </div>
+    <div id="lb-status"></div>
+    <div style="padding:4px 9px;font-size:8px;color:var(--text);opacity:.4;border-bottom:1px solid var(--border);display:flex;align-items:center">
+      <span class="lb-live-dot"></span> LIVE · обновляется каждые 5 сек
+    </div>
+    <div id="lb-list"></div>
+  </div>
+  <div id="tab-ach" class="tab-content">
+    <div class="sec">Достижения</div>
+    <div id="ach-list"></div>
+  </div>
+  <div id="tab-log" class="tab-content">
+    <div class="sec">События</div>
+    <div id="log-list" style="padding:7px 9px;font-size:8px;line-height:2;color:var(--text);opacity:.7"></div>
+  </div>
+</div>
+
+<div id="bottom">
+  <span>HAMSTR v3.0</span>
+  <span id="b-mid">🌳 Парк Самары · Ctrl+Shift+A = Admin</span>
+  <span id="b-time"></span>
+</div>
+</div>
+
+<div id="notif"></div>
+
+<!-- ADMIN OVERLAY -->
+<div id="admin-overlay">
+  <div id="admin-box">
+    <div id="admin-login">
+      <div class="lock">🔐</div>
+      <h2>Admin Access</h2>
+      <p>Только для администратора</p>
+      <input type="password" id="admin-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')adminLogin()" maxlength="20" autocomplete="off">
+      <div id="admin-login-err"></div>
+      <button id="admin-login-btn" onclick="adminLogin()">ВОЙТИ</button>
+    </div>
+    <div id="admin-panel-content">
+      <div class="adm-top">
+        <h2>⚡ Admin Panel</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:8px;color:var(--red);letter-spacing:1px">ДОСТУП РАЗРЕШЁН</span>
+          <button class="adm-close" onclick="closeAdmin()">✕ ЗАКРЫТЬ</button>
+        </div>
+      </div>
+
+      <!-- МОНЕТЫ -->
+      <div class="adm-section">
+        <h3>💰 Мои монеты</h3>
+        <div class="adm-row">
+          <span class="adm-lbl">Добавить</span>
+          <input class="adm-inp" id="adm-add-coins" type="number" value="1000000">
+          <button class="adm-btn gold" onclick="adminAddCoins()">+Добавить</button>
+        </div>
+        <div class="adm-row">
+          <button class="adm-btn gold" onclick="adminAddCoins(1e6)">+1M</button>
+          <button class="adm-btn gold" onclick="adminAddCoins(1e9)">+1B</button>
+          <button class="adm-btn gold" onclick="adminAddCoins(1e12)">+1T</button>
+          <button class="adm-btn gold" onclick="adminAddCoins(1e15)">+MAX</button>
+        </div>
+        <div class="adm-row">
+          <span class="adm-lbl">Установить точно</span>
+          <input class="adm-inp" id="adm-set-coins" type="number" value="0">
+          <button class="adm-btn cyan" onclick="adminSetCoins()">Задать</button>
+        </div>
+      </div>
+
+      <!-- ХАРАКТЕРИСТИКИ -->
+      <div class="adm-section">
+        <h3>⚙️ Мои характеристики</h3>
+        <div class="adm-row">
+          <span class="adm-lbl">Сила клика</span>
+          <input class="adm-inp" id="adm-cpc" type="number" value="1">
+          <button class="adm-btn cyan" onclick="adminSetStat('cpc')">Задать</button>
+        </div>
+        <div class="adm-row">
+          <span class="adm-lbl">Авто/сек</span>
+          <input class="adm-inp" id="adm-cps" type="number" value="0">
+          <button class="adm-btn cyan" onclick="adminSetStat('cps')">Задать</button>
+        </div>
+        <div class="adm-row">
+          <span class="adm-lbl">Крит. шанс %</span>
+          <input class="adm-inp" id="adm-crit" type="number" value="0" min="0" max="80">
+          <button class="adm-btn cyan" onclick="adminSetStat('crit')">Задать</button>
+        </div>
+        <div class="adm-row">
+          <span class="adm-lbl">Ребитков</span>
+          <input class="adm-inp" id="adm-rb" type="number" value="0" min="0" max="20">
+          <button class="adm-btn purple" onclick="adminSetStat('rb')">Задать</button>
+        </div>
+      </div>
+
+      <!-- БЫСТРЫЕ КНОПКИ -->
+      <div class="adm-section">
+        <h3>⚡ Быстрые действия</h3>
+        <div class="adm-grid">
+          <button class="adm-btn green" onclick="adminMaxAll()">✓ Макс всё</button>
+          <button class="adm-btn purple" onclick="adminMaxRB()">♻ 20 ребитков</button>
+          <button class="adm-btn green" onclick="adminAllTechs()">🔬 Все технологии</button>
+          <button class="adm-btn green" onclick="adminAllAchs()">🏆 Все ачивки</button>
+        </div>
+        <div class="adm-row" style="margin-top:6px">
+          <button class="adm-btn gold" onclick="adminGodMode()">⚡ ГОД-МОД</button>
+          <button class="adm-btn red" onclick="adminFullReset()">💀 ПОЛНЫЙ СБРОС</button>
+        </div>
+      </div>
+
+      <!-- СОБЫТИЯ -->
+      <div class="adm-section">
+        <h3>🎉 Запустить событие</h3>
+        <div class="adm-grid">
+          <button class="adm-btn gold" onclick="adminEvent(0)">🔥 Двойные монеты</button>
+          <button class="adm-btn gold" onclick="adminEvent(1)">⚡ Тройные монеты</button>
+          <button class="adm-btn gold" onclick="adminEvent(2)">🌟 Клик-безумие</button>
+          <button class="adm-btn gold" onclick="adminEvent(3)">💰 Дождь монет</button>
+        </div>
+        <div class="adm-row" style="margin-top:6px">
+          <button class="adm-btn red" onclick="adminStopEvent()">✕ Стоп событие</button>
+        </div>
+      </div>
+
+      <!-- УПРАВЛЕНИЕ ИГРОКАМИ -->
+      <div class="adm-section">
+        <h3>👥 Управление игроками (Таблица лидеров)</h3>
+        <div style="font-size:8px;color:var(--text);opacity:.5;margin-bottom:8px;letter-spacing:1px">Нажми ОБНОВИТЬ чтобы загрузить актуальный список</div>
+        <div class="adm-row">
+          <button class="adm-btn cyan" onclick="adminLoadPlayers()">↻ ОБНОВИТЬ СПИСОК</button>
+          <button class="adm-btn red" onclick="adminClearLB()">🗑 ОЧИСТИТЬ ТОП</button>
+        </div>
+        <div id="adm-players-list" style="margin-top:8px;max-height:300px;overflow-y:auto"></div>
+      </div>
+
+      <!-- ВЫДАТЬ МОНЕТЫ ИГРОКУ -->
+      <div class="adm-section">
+        <h3>🎁 Выдать монеты игроку</h3>
+        <div class="adm-row">
+          <span class="adm-lbl">Имя игрока</span>
+          <input class="adm-inp" id="adm-give-name" placeholder="имя...">
+        </div>
+        <div class="adm-row">
+          <span class="adm-lbl">Сумма</span>
+          <input class="adm-inp" id="adm-give-coins" type="number" value="1000000">
+          <button class="adm-btn gold" onclick="adminGiveCoins()">Выдать</button>
+        </div>
+        <div id="adm-give-status" style="font-size:8px;color:var(--green);letter-spacing:1px;min-height:14px;margin-top:4px"></div>
+      </div>
+
+      <!-- СООБЩЕНИЕ ВСЕМ -->
+      <div class="adm-section">
+        <h3>📢 Системное сообщение</h3>
+        <div class="adm-row">
+          <input class="adm-inp" id="adm-msg" placeholder="Введи сообщение для всех...">
+          <button class="adm-btn cyan" onclick="adminBroadcast()">Отправить</button>
+        </div>
+      </div>
+
+      <div class="adm-section adm-danger">
+        <h3>⚠ Опасная зона</h3>
+        <div class="adm-grid">
+          <button class="adm-btn red" onclick="adminFullReset()">💀 Сбросить мои данные</button>
+          <button class="adm-btn red" onclick="adminClearLB()">🗑 Очистить таблицу</button>
+        </div>
+      </div>
+      <div style="padding:9px 16px;font-size:8px;color:var(--text);opacity:.25;letter-spacing:1px">HAMSTR Admin v3.0</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// CANVAS BACKGROUND
+// ══════════════════════════════════════════════
+(function(){
+  const c=document.getElementById('bgCanvas'),ctx=c.getContext('2d');
+  let W,H,pts=[];
+  function resize(){W=c.width=innerWidth;H=c.height=innerHeight;pts=[];for(let i=0;i<70;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,r:Math.random()*1.4+.3})}
+  resize();window.addEventListener('resize',resize);
+  (function frame(){ctx.clearRect(0,0,W,H);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba(200,150,12,.4)';ctx.fill()});for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const d=Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y);if(d<80){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(200,150,12,${.07*(1-d/80)})`;ctx.lineWidth=.5;ctx.stroke()}}requestAnimationFrame(frame)})()
+})();
+
+// ══════════════════════════════════════════════
+// GAME STATE
+// ══════════════════════════════════════════════
+const G={coins:0,totalCoins:0,allTimeCoins:0,clicks:0,totalClicks:0,cpc:1,cps:0,rebirths:0,rebirthBonus:0,rbMultiplier:1,critChance:0,critMult:2,eventActive:false,eventType:null,eventTimer:0,techs:{},achGot:{},adminBanned:false};
+
+const CLICK_ITEMS=[
+  {id:'c0',icon:'🦷',name:'Острые зубы',    desc:'+2 клик',  base:40,    cpcAdd:2},
+  {id:'c1',icon:'🔩',name:'Стальные когти', desc:'+8 клик',  base:250,   cpcAdd:8},
+  {id:'c2',icon:'⚡',name:'Статик-перчатка',desc:'+25 клик', base:1500,  cpcAdd:25},
+  {id:'c3',icon:'🔬',name:'Квантовый укус', desc:'+100 клик',base:12000, cpcAdd:100},
+  {id:'c4',icon:'💎',name:'Алмазные лапки', desc:'+400 клик',base:90000, cpcAdd:400},
+  {id:'c5',icon:'☢️',name:'Ядерный щелчок', desc:'+2000 клик',base:800000,cpcAdd:2000},
+];
+const AUTO_ITEMS=[
+  {id:'a0',icon:'🐿️',name:'Белка-нора',     desc:'+2/сек',  base:80,    cpsAdd:2},
+  {id:'a1',icon:'🐭',name:'Мышиный отряд',  desc:'+8/сек',  base:500,   cpsAdd:8},
+  {id:'a2',icon:'🦦',name:'Выдровый завод', desc:'+30/сек', base:3500,  cpsAdd:30},
+  {id:'a3',icon:'🦡',name:'Барсучий банк',  desc:'+120/сек',base:25000, cpsAdd:120},
+  {id:'a4',icon:'🦫',name:'Бобровый реактор',desc:'+500/сек',base:180000,cpsAdd:500},
+  {id:'a5',icon:'🐉',name:'Дракон удачи',   desc:'+2500/сек',base:1500000,cpsAdd:2500},
+];
+const BOOST_ITEMS=[
+  {id:'b0',icon:'☕',name:'Кофеин',    desc:'Крит.шанс +5%', base:2000,  type:'crit_chance',val:0.05},
+  {id:'b1',icon:'⚔️',name:'Ярость',   desc:'Крит.множ. +.5',base:8000,  type:'crit_mult',  val:0.5},
+  {id:'b2',icon:'🧲',name:'Магнит',   desc:'+10% к монетам', base:35000, type:'global_pct', val:0.10},
+  {id:'b3',icon:'🔱',name:'Трезубец', desc:'Крит.шанс +15%', base:200000,type:'crit_chance',val:0.15},
+  {id:'b4',icon:'👑',name:'Корона',   desc:'×1.5 ко всему',  base:2e6,   type:'global_mult',val:1.5},
+];
+const TECHS=[
+  {id:'t0',icon:'🔍',name:'Острый взгляд', desc:'CPC +10%',      cost:5000,   rbCost:0,req:[],     effect:()=>{}},
+  {id:'t1',icon:'⏱️',name:'Скорость',      desc:'CPS +15%',      cost:20000,  rbCost:0,req:['t0'], effect:()=>{}},
+  {id:'t2',icon:'💥',name:'Крит. ум',      desc:'Крит.шанс +10%',cost:0,      rbCost:1,req:[],     effect:()=>{G.critChance+=0.1}},
+  {id:'t3',icon:'🌟',name:'Суперудар',     desc:'Крит.множ. +1',  cost:0,      rbCost:2,req:['t2'], effect:()=>{G.critMult+=1}},
+  {id:'t4',icon:'🏭',name:'Мега-завод',    desc:'Авто +25%',      cost:500000, rbCost:0,req:['t1'], effect:()=>{}},
+  {id:'t5',icon:'🧬',name:'Мутация',       desc:'CPC ×2',         cost:0,      rbCost:3,req:['t3'], effect:()=>{}},
+  {id:'t6',icon:'🌀',name:'Временная петля',desc:'Ребитк-бонус ×1.5',cost:0,  rbCost:5,req:['t2'], effect:()=>{}},
+  {id:'t7',icon:'💫',name:'Квантовый хомяк',desc:'Всё ×1.5',      cost:0,      rbCost:8,req:['t5','t6'],effect:()=>{}},
+];
+const STAGES=[{name:'Начинающий',emoji:'🐹',t:1000},{name:'Уверенный',emoji:'🐾',t:5000},{name:'Бывалый',emoji:'🦸',t:25000},{name:'Опытный',emoji:'🏅',t:100000},{name:'Мастер',emoji:'👑',t:500000},{name:'Легенда',emoji:'🚀',t:Infinity}];
+const EVENTS=[
+  {id:'double', label:'🔥 ДВОЙНЫЕ МОНЕТЫ!',  duration:30, mult:2},
+  {id:'triple', label:'⚡ ТРОЙНЫЕ МОНЕТЫ!',  duration:15, mult:3},
+  {id:'frenzy', label:'🌟 КЛИК-БЕЗУМИЕ!',    duration:20, clickMult:5},
+  {id:'rain',   label:'💰 ДОЖДЬ МОНЕТ!',     duration:25, bonus:500},
+];
+const ACHS=[
+  {id:'a0',icon:'👆',name:'Первый клик',   desc:'Кликни хоть раз',       check:()=>G.totalClicks>=1},
+  {id:'a1',icon:'💰',name:'Первая тысяча', desc:'1 000 монет',            check:()=>G.allTimeCoins>=1000},
+  {id:'a2',icon:'🔥',name:'Сотня кликов',  desc:'100 кликов',             check:()=>G.totalClicks>=100},
+  {id:'a3',icon:'⚡',name:'Скорость!',     desc:'50+ монет/сек',          check:()=>G.cps>=50},
+  {id:'a4',icon:'♻️',name:'Первый ребитк', desc:'Сделай 1 ребитк',        check:()=>G.rebirths>=1},
+  {id:'a5',icon:'🌟',name:'500 кликов',    desc:'500 кликов подряд',       check:()=>G.totalClicks>=500},
+  {id:'a6',icon:'👑',name:'5 ребитков',    desc:'5 ребитков',             check:()=>G.rebirths>=5},
+  {id:'a7',icon:'💎',name:'Миллионер',     desc:'1M монет всего',          check:()=>G.allTimeCoins>=1e6},
+  {id:'a8',icon:'🚀',name:'1000/сек',      desc:'1000 монет/сек',          check:()=>G.cps>=1000},
+  {id:'a9',icon:'🔬',name:'Технолог',      desc:'3 технологии',            check:()=>Object.keys(G.techs).length>=3},
+  {id:'a10',icon:'🌈',name:'Полный магазин',desc:'Все айтемы 1+ уровень',  check:()=>[...CLICK_ITEMS,...AUTO_ITEMS].every(i=>itemLevels[i.id]>0)},
+  {id:'a11',icon:'🏆',name:'HAMSTR Legend', desc:'20 ребитков',            check:()=>G.rebirths>=20},
+];
+
+let itemLevels={};
+[...CLICK_ITEMS,...AUTO_ITEMS,...BOOST_ITEMS].forEach(i=>itemLevels[i.id]=0);
+
+// ══════════════════════════════════════════════
+// LEADERBOARD (shared storage)
+// ══════════════════════════════════════════════
+let myName=null;
+let lbData={};      // {name: {coins, clicks, rebirths, banned, ts}}
+let adminMessage=null;
+
+async function lbJoin(){
+  const n=document.getElementById('lb-join-inp').value.trim();
+  if(!n){document.getElementById('lb-status').textContent='⚠ Введи имя!';return}
+  myName=n;
+  document.getElementById('lb-status').textContent='✓ Добро пожаловать, '+n+'!';
+  document.getElementById('lb-join-inp').value='';
+  addLog('🏆 Вошёл в таблицу лидеров как: '+n);
+  await lbPush();
+  await lbPull();
+}
+
+async function lbPush(){
+  if(!myName) return;
+  const entry={name:myName,coins:Math.floor(G.allTimeCoins),clicks:G.totalClicks,rebirths:G.rebirths,ts:Date.now(),banned:false};
+  try{
+    // check if banned first
+    const existing=await window.storage.get('lb:'+myName,true).catch(()=>null);
+    if(existing){const d=JSON.parse(existing.value);if(d.banned){G.adminBanned=true;return}}
+    await window.storage.set('lb:'+myName,JSON.stringify(entry),true);
+  }catch(e){}
+}
+
+async function lbPull(){
+  try{
+    const keys=await window.storage.list('lb:',true);
+    const entries=[];
+    for(const k of (keys.keys||[])){
+      try{
+        const r=await window.storage.get(k,true);
+        if(r){
+          const d=JSON.parse(r.value);
+          entries.push(d);
+          lbData[d.name]=d;
+        }
+      }catch(e){}
+    }
+    // check admin message
+    try{
+      const msg=await window.storage.get('admin:broadcast',true);
+      if(msg){
+        const m=JSON.parse(msg.value);
+        if(m.ts&&(!adminMessage||m.ts>adminMessage)){
+          adminMessage=m.ts;
+          showNotif('📢 '+m.text);
+          addLog('📢 Сообщение от Admin: '+m.text);
+        }
+      }
+    }catch(e){}
+    // render
+    renderLB(entries);
+  }catch(e){}
+}
+
+function renderLB(entries){
+  entries=entries.filter(e=>!e.banned).sort((a,b)=>b.coins-a.coins);
+  const el=document.getElementById('lb-list');
+  el.innerHTML='';
+  if(entries.length===0){el.innerHTML='<div style="padding:12px 9px;font-size:9px;color:var(--text);opacity:.4;text-align:center">Никого нет. Войди первым!</div>';return}
+  entries.forEach((p,i)=>{
+    const isMe=p.name===myName;
+    const rankClass=i===0?'gold':i===1?'silver':i===2?'bronze':'normal';
+    const rankIcon=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+    const div=document.createElement('div');
+    div.className='lb-entry'+(isMe?' me':'')+(p.banned?' banned':'');
+    div.id='lb-row-'+p.name.replace(/\W/g,'_');
+    div.innerHTML=`
+      <div class="lb-rank ${rankClass}">${rankIcon}</div>
+      <div class="lb-info">
+        <div class="lb-name">${p.name}${isMe?'<span class="lb-tag" style="background:rgba(0,212,255,.1);color:var(--cyan2);border:1px solid rgba(0,212,255,.2)">ТЫ</span>':''}</div>
+        <div class="lb-score">💰 ${fmt(p.coins)} · 👆 ${fmt(p.clicks)} · ♻ ${p.rebirths}</div>
+      </div>
+      <div class="lb-coins">${fmt(p.coins)}</div>`;
+    el.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════
+// CALC
+// ══════════════════════════════════════════════
+function getGlobalMult(){
+  let m=G.rbMultiplier;
+  let g=1;
+  if(itemLevels['b2']>0) g+=(itemLevels['b2']*0.10);
+  if(itemLevels['b4']>0) g+=(itemLevels['b4']*0.5);
+  m*=g;
+  if(G.techs['t7']) m*=1.5;
+  return m;
+}
+function getTechMult(field){
+  let v=1;
+  if(G.techs['t0']) v+=0.10;
+  if(G.techs['t1']&&field==='cps') v+=0.15;
+  if(G.techs['t4']&&field==='cps') v+=0.25;
+  if(G.techs['t5']) v*=2;
+  return v;
+}
+function getECPC(){
+  let base=G.cpc*getTechMult('cpc');
+  let m=getGlobalMult();
+  if(G.eventType&&G.eventType.clickMult) m*=G.eventType.clickMult;
+  return Math.max(1,Math.floor(base*m*(1+G.rebirthBonus/100)));
+}
+function getECPS(){
+  let base=G.cps*getTechMult('cps');
+  let m=getGlobalMult();
+  if(G.eventType&&G.eventType.mult) m*=G.eventType.mult;
+  return base*m*(1+G.rebirthBonus/100);
+}
+function itemCost(item){return Math.floor(item.base*Math.pow(1.55,itemLevels[item.id]||0))}
+function rbCost(){return 1000000*(G.rebirths+1)}
+function getCrit(){
+  const c=Math.min(G.critChance+(itemLevels['b0']||0)*0.05+(itemLevels['b3']||0)*0.15,0.8);
+  const m=G.critMult+(itemLevels['b1']||0)*0.5;
+  return{c,m};
+}
+
+// ══════════════════════════════════════════════
+// CLICK
+// ══════════════════════════════════════════════
+function doClick(e){
+  if(G.adminBanned){showNotif('🚫 Ты забанен администратором');return}
+  let earn=getECPC();
+  const{c,m}=getCrit();
+  let isCrit=false;
+  if(Math.random()<c){earn=Math.floor(earn*m);isCrit=true}
+  if(G.eventType&&G.eventType.bonus) earn+=G.eventType.bonus;
+  G.coins+=earn;G.totalCoins+=earn;G.allTimeCoins+=earn;
+  G.clicks++;G.totalClicks++;
+  const f=document.createElement('div');
+  f.className='cfloat';
+  f.style.left=(e.clientX-10)+'px';f.style.top=(e.clientY-10)+'px';
+  f.style.color=isCrit?'#ff4040':'';
+  f.textContent=(isCrit?'💥 КРИТ! ':'+')+fmt(earn);
+  document.body.appendChild(f);setTimeout(()=>f.remove(),800);
+  render();
+}
+
+// ══════════════════════════════════════════════
+// BUY
+// ══════════════════════════════════════════════
+function buyItem(item){
+  const cost=itemCost(item);
+  if(G.coins<cost) return;
+  G.coins-=cost;itemLevels[item.id]++;
+  if(item.cpcAdd) G.cpc+=item.cpcAdd;
+  if(item.cpsAdd) G.cps+=item.cpsAdd;
+  addLog('Куплено: '+item.icon+' '+item.name);render();
+}
+function buyTech(t){
+  if(G.techs[t.id]) return;
+  if(!t.req.every(r=>G.techs[r])) return;
+  if(t.cost>0&&G.coins<t.cost) return;
+  if(t.rbCost>0&&G.rebirths<t.rbCost) return;
+  G.coins-=t.cost;G.techs[t.id]=true;t.effect();
+  addLog('🔬 Технология: '+t.name);showNotif('🔬 '+t.name+' разблокирована!');render();
+}
+
+// ══════════════════════════════════════════════
+// REBIRTH
+// ══════════════════════════════════════════════
+function doRebirth(){
+  if(G.coins<rbCost()||G.rebirths>=20) return;
+  G.rebirths++;G.rebirthBonus=Math.min(G.rebirths*0.5,10);
+  const nm=Math.floor(G.rebirths/2),pm=Math.floor((G.rebirths-1)/2);
+  if(nm>pm){G.rbMultiplier*=2;showNotif('🔥 МНОЖИТЕЛЬ ×'+G.rbMultiplier+'!')}
+  else showNotif('♻ Ребитк #'+G.rebirths+'! +0.5% навсегда');
+  addLog('♻ Ребитк #'+G.rebirths);
+  G.coins=0;G.totalCoins=0;G.clicks=0;G.cpc=1;G.cps=0;G.critChance=0;G.critMult=2;
+  const kept={...G.techs};G.techs={};
+  Object.keys(kept).forEach(id=>{const t=TECHS.find(x=>x.id===id);if(t){G.techs[id]=true;t.effect()}});
+  Object.keys(itemLevels).forEach(k=>itemLevels[k]=0);
+  render();
+}
+
+// ══════════════════════════════════════════════
+// EVENTS
+// ══════════════════════════════════════════════
+let eventInterval=null;
+function maybeEvent(){
+  if(G.eventActive) return;
+  if(Math.random()<0.012){
+    const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+    G.eventActive=true;G.eventType=ev;G.eventTimer=ev.duration;
+    addLog('🎉 Событие: '+ev.label);showNotif(ev.label);
+    clearInterval(eventInterval);
+    eventInterval=setInterval(()=>{G.eventTimer--;if(G.eventTimer<=0){G.eventActive=false;G.eventType=null;clearInterval(eventInterval)}renderEvent();},1000);
+  }
+}
+
+// ══════════════════════════════════════════════
+// FORMAT + UTILS
+// ══════════════════════════════════════════════
+function fmt(n){
+  n=Math.floor(n);
+  if(n>=1e15)return(n/1e15).toFixed(2)+'Qd';
+  if(n>=1e12)return(n/1e12).toFixed(2)+'T';
+  if(n>=1e9)return(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return(n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+  return n.toLocaleString('ru');
+}
+
+let activeL='shop',activeR='lb';
+function switchTab(t){activeL=t;document.querySelectorAll('#left .tab').forEach((el,i)=>{el.classList.toggle('active',['shop','tech'][i]===t)});document.querySelectorAll('#left .tab-content').forEach(el=>el.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active')}
+function switchTabR(t){activeR=t;document.querySelectorAll('#right .tab').forEach((el,i)=>{el.classList.toggle('active',['lb','ach','log'][i]===t)});document.querySelectorAll('#right .tab-content').forEach(el=>el.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active')}
+
+let notifT=null;
+function showNotif(msg){const el=document.getElementById('notif');el.textContent=msg;el.style.opacity=1;clearTimeout(notifT);notifT=setTimeout(()=>el.style.opacity=0,3500)}
+
+const logLines=[];
+function addLog(msg){
+  const t=new Date().toLocaleTimeString('ru');
+  logLines.unshift('['+t+'] '+msg);if(logLines.length>60)logLines.pop();
+  document.getElementById('log-list').innerHTML=logLines.map(l=>'<div>'+l+'</div>').join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════
+function render(){
+  const eCPC=getECPC(),eCPS=getECPS(),gm=getGlobalMult();
+  document.getElementById('t-coins').textContent=fmt(G.coins);
+  document.getElementById('t-cpc').textContent=fmt(eCPC);
+  document.getElementById('t-cps').textContent=fmt(eCPS);
+  document.getElementById('t-rb').textContent=G.rebirths;
+  document.getElementById('t-mult').textContent='×'+G.rbMultiplier;
+  document.getElementById('s-clicks').textContent=fmt(G.totalClicks);
+  document.getElementById('s-total').textContent=fmt(G.allTimeCoins);
+  document.getElementById('s-cps').textContent=fmt(eCPS);
+  const{c,m}=getCrit();
+  document.getElementById('s-crit').textContent=Math.round(c*100)+'%';
+  document.getElementById('s-critm').textContent='×'+m.toFixed(1);
+  document.getElementById('mult-val').textContent='×'+gm.toFixed(gm%1===0?0:1);
+  document.getElementById('mult-src').textContent=G.rbMultiplier>1?'(ребитк ×'+G.rbMultiplier+')':'';
+
+  const si=STAGES.findIndex(s=>G.totalClicks<s.t);
+  const idx=si===-1?STAGES.length-1:si;
+  const st=STAGES[idx];
+  document.getElementById('stage-name').textContent=st.name;
+  document.getElementById('hemoji').textContent=st.emoji;
+  const prev=idx>0?STAGES[idx-1].t:0;
+  const range=st.t===Infinity?STAGES[idx-1].t:st.t-prev;
+  const prog=st.t===Infinity?1:Math.min((G.totalClicks-prev)/range,1);
+  document.getElementById('stage-bar').style.width=(prog*100)+'%';
+  document.getElementById('stage-pct').textContent=st.t===Infinity?'MAX':Math.round(prog*100)+'%';
+
+  const need=rbCost();
+  document.getElementById('rb-cnt').textContent=G.rebirths+'/20';
+  document.getElementById('rb-bonus').textContent='+'+G.rebirthBonus.toFixed(1)+'%';
+  document.getElementById('rb-mults').textContent=Math.floor(G.rebirths/2)+' шт.';
+  document.getElementById('rb-req').textContent=fmt(need);
+  document.getElementById('rb-prog').style.width=Math.min(G.coins/need*100,100)+'%';
+  document.getElementById('rebirth-btn').disabled=G.coins<need||G.rebirths>=20;
+
+  // shop
+  ['click-shop','auto-shop','boost-shop'].forEach((id,gi)=>{
+    const items=[CLICK_ITEMS,AUTO_ITEMS,BOOST_ITEMS][gi];
+    const el=document.getElementById(id);el.innerHTML='';
+    items.forEach(item=>{
+      const lvl=itemLevels[item.id]||0,cost=itemCost(item),cb=G.coins>=cost;
+      const div=document.createElement('div');
+      div.className='shop-item'+(cb?' can-buy':'');
+      div.innerHTML=`<div class="si-icon">${item.icon}</div><div class="si-body"><div class="si-name">${item.name}</div><div class="si-desc">${item.desc}</div><div class="si-cost">${fmt(cost)}</div>${gi<2?`<div class="si-bar"><div class="si-bar-fill" style="width:${Math.min(lvl*8,100)}%"></div></div>`:''}</div><div class="si-lvl">${gi===2?'×'+lvl:'LV'+lvl}</div>`;
+      div.onclick=()=>buyItem(item);el.appendChild(div);
+    });
+  });
+
+  // tech
+  const te=document.getElementById('tech-tree');te.innerHTML='';
+  TECHS.forEach(t=>{
+    const unlocked=G.techs[t.id],reqs=t.req.every(r=>G.techs[r]);
+    const co=t.cost===0||G.coins>=t.cost,ro=t.rbCost===0||G.rebirths>=t.rbCost;
+    const can=reqs&&co&&ro&&!unlocked;
+    const div=document.createElement('div');
+    div.className='tech-node'+(unlocked?' unlocked':can?' can-unlock':!reqs?' locked':'');
+    let cs='';
+    if(t.cost>0) cs+=`<span class="tn-cost coins">💰${fmt(t.cost)}</span> `;
+    if(t.rbCost>0) cs+=`<span class="tn-cost rb">♻${t.rbCost}</span>`;
+    div.innerHTML=`<div class="tn-icon">${t.icon}</div><div style="flex:1"><div class="tn-name">${t.name}</div><div class="tn-desc">${t.desc}</div><div>${cs}</div>${t.req.length?`<div style="font-size:7px;color:var(--text);opacity:.4;margin-top:2px">Требует: ${t.req.map(r=>TECHS.find(x=>x.id===r)?.name).join(', ')}</div>`:''}</div><div class="tn-badge ${unlocked?'ok':'req'}">${unlocked?'✓':can?'КУПИТЬ':'БЛОК'}</div>`;
+    if(can) div.onclick=()=>buyTech(t);
+    te.appendChild(div);
+  });
+
+  // ach
+  const ae=document.getElementById('ach-list');ae.innerHTML='';
+  ACHS.forEach(a=>{
+    const got=G.achGot[a.id]||a.check();
+    if(got&&!G.achGot[a.id]){G.achGot[a.id]=true;addLog('🏆 Ачивка: '+a.name);showNotif('🏆 '+a.name)}
+    const div=document.createElement('div');div.className='ach'+(got?'':' locked');
+    div.innerHTML=`<div class="ach-icon">${a.icon}</div><div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div>${got?'<div class="ach-got">✓ Получено</div>':''}</div>`;
+    ae.appendChild(div);
+  });
+}
+
+function renderEvent(){
+  const lbl=document.getElementById('event-label'),tmr=document.getElementById('event-timer');
+  if(G.eventActive){lbl.textContent=G.eventType.label;tmr.textContent=G.eventTimer+'с'}
+  else{lbl.textContent='— нет события —';tmr.textContent=''}
+}
+
+// ══════════════════════════════════════════════
+// ADMIN PANEL
+// ══════════════════════════════════════════════
+const ADMIN_PASS='2013';
+let adminUnlocked=false;
+
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.code==='KeyA'){e.preventDefault();openAdmin()}});
+
+function openAdmin(){
+  document.getElementById('admin-overlay').classList.add('show');
+  if(!adminUnlocked){
+    document.getElementById('admin-login').style.display='flex';
+    document.getElementById('admin-panel-content').style.display='none';
+    setTimeout(()=>document.getElementById('admin-pwd').focus(),100);
+  }
+}
+function closeAdmin(){document.getElementById('admin-overlay').classList.remove('show')}
+function adminLogin(){
+  const pwd=document.getElementById('admin-pwd').value;
+  const err=document.getElementById('admin-login-err');
+  if(pwd===ADMIN_PASS){
+    adminUnlocked=true;
+    document.getElementById('admin-login').style.display='none';
+    document.getElementById('admin-panel-content').style.display='block';
+    adminSyncInputs();addLog('🔴 [ADMIN] Панель открыта');
+  } else {
+    err.textContent='⚠ Неверный пароль';
+    document.getElementById('admin-pwd').value='';
+    setTimeout(()=>err.textContent='',2000);
+  }
+}
+
+function adminSyncInputs(){
+  document.getElementById('adm-cpc').value=G.cpc;
+  document.getElementById('adm-cps').value=Math.round(G.cps);
+  document.getElementById('adm-rb').value=G.rebirths;
+  document.getElementById('adm-crit').value=Math.round(G.critChance*100);
+}
+
+// MY STATS
+function adminAddCoins(preset=null){
+  const v=preset!=null?Number(preset):parseFloat(document.getElementById('adm-add-coins').value)||0;
+  G.coins+=v;G.totalCoins+=v;G.allTimeCoins+=v;
+  addLog('🔴 [ADMIN] +'+fmt(v)+' монет');showNotif('[ADMIN] +'+fmt(v)+' монет');render();
+}
+function adminSetCoins(){
+  const v=parseFloat(document.getElementById('adm-set-coins').value)||0;
+  G.coins=v;G.totalCoins=v;G.allTimeCoins+=v;
+  addLog('🔴 [ADMIN] Монеты='+fmt(v));render();
+}
+function adminSetStat(s){
+  if(s==='cpc'){G.cpc=parseFloat(document.getElementById('adm-cpc').value)||1}
+  else if(s==='cps'){G.cps=parseFloat(document.getElementById('adm-cps').value)||0}
+  else if(s==='crit'){G.critChance=Math.min((parseFloat(document.getElementById('adm-crit').value)||0)/100,.8)}
+  else if(s==='rb'){
+    const v=Math.min(parseInt(document.getElementById('adm-rb').value)||0,20);
+    G.rebirths=v;G.rebirthBonus=Math.min(v*0.5,10);G.rbMultiplier=Math.pow(2,Math.floor(v/2));
+  }
+  addLog('🔴 [ADMIN] Стат '+s+' обновлён');render();
+}
+function adminMaxAll(){
+  CLICK_ITEMS.forEach(i=>{G.cpc+=i.cpcAdd*(50-(itemLevels[i.id]||0));itemLevels[i.id]=50});
+  AUTO_ITEMS.forEach(i=>{G.cps+=i.cpsAdd*(50-(itemLevels[i.id]||0));itemLevels[i.id]=50});
+  BOOST_ITEMS.forEach(i=>itemLevels[i.id]=50);
+  addLog('🔴 [ADMIN] Макс магазин');showNotif('[ADMIN] Магазин MAX!');render();
+}
+function adminMaxRB(){G.rebirths=20;G.rebirthBonus=10;G.rbMultiplier=1024;addLog('🔴 [ADMIN] 20 ребитков');showNotif('[ADMIN] 20 ребитков!');render()}
+function adminAllTechs(){TECHS.forEach(t=>{G.techs[t.id]=true;t.effect()});addLog('🔴 [ADMIN] Все технологии');render()}
+function adminAllAchs(){ACHS.forEach(a=>G.achGot[a.id]=true);addLog('🔴 [ADMIN] Все ачивки');render()}
+function adminGodMode(){
+  G.coins=1e15;G.totalCoins=1e15;G.allTimeCoins=1e15;G.cpc=999999;G.cps=999999;G.critChance=0.8;G.critMult=10;
+  G.rebirths=20;G.rebirthBonus=10;G.rbMultiplier=1024;
+  CLICK_ITEMS.forEach(i=>{itemLevels[i.id]=100});AUTO_ITEMS.forEach(i=>{itemLevels[i.id]=100});BOOST_ITEMS.forEach(i=>{itemLevels[i.id]=100});
+  TECHS.forEach(t=>{G.techs[t.id]=true;t.effect()});ACHS.forEach(a=>G.achGot[a.id]=true);
+  addLog('🔴 [ADMIN] ⚡ ГОД-МОД');showNotif('⚡ ГОД-МОД!');render();
+}
+function adminFullReset(){
+  if(!confirm('Полный сброс СВОИХ данных?')) return;
+  G.coins=0;G.totalCoins=0;G.allTimeCoins=0;G.clicks=0;G.totalClicks=0;G.cpc=1;G.cps=0;
+  G.rebirths=0;G.rebirthBonus=0;G.rbMultiplier=1;G.critChance=0;G.critMult=2;G.techs={};G.achGot={};
+  Object.keys(itemLevels).forEach(k=>itemLevels[k]=0);
+  addLog('🔴 [ADMIN] Полный сброс');showNotif('[ADMIN] Сброс');adminSyncInputs();render();
+}
+function adminEvent(idx){
+  const ev=EVENTS[idx];clearInterval(eventInterval);
+  G.eventActive=true;G.eventType=ev;G.eventTimer=ev.duration;
+  addLog('🔴 [ADMIN] Событие: '+ev.label);
+  eventInterval=setInterval(()=>{G.eventTimer--;if(G.eventTimer<=0){G.eventActive=false;G.eventType=null;clearInterval(eventInterval)}renderEvent();},1000);
+  renderEvent();
+}
+function adminStopEvent(){G.eventActive=false;G.eventType=null;clearInterval(eventInterval);renderEvent();addLog('🔴 [ADMIN] Стоп событие')}
+
+// PLAYER MANAGEMENT
+async function adminLoadPlayers(){
+  const el=document.getElementById('adm-players-list');
+  el.innerHTML='<div style="font-size:9px;color:var(--text);opacity:.5;padding:8px">Загружаю...</div>';
+  try{
+    const keys=await window.storage.list('lb:',true);
+    const players=[];
+    for(const k of (keys.keys||[])){
+      try{const r=await window.storage.get(k,true);if(r)players.push(JSON.parse(r.value))}catch(e){}
+    }
+    players.sort((a,b)=>b.coins-a.coins);
+    if(players.length===0){el.innerHTML='<div style="font-size:9px;color:var(--text);opacity:.4;padding:8px">Нет игроков</div>';return}
+    el.innerHTML='';
+    players.forEach(p=>{
+      const div=document.createElement('div');
+      div.className='adm-player';
+      div.innerHTML=`
+        <div class="adm-player-name" title="${p.name}">${p.banned?'🚫 ':''} ${p.name}</div>
+        <div class="adm-player-coins">💰${fmt(p.coins)}</div>
+        <div class="adm-player-btns">
+          ${p.banned
+            ?`<button class="lb-act-btn unban" onclick="adminUnban('${p.name}')">РАЗБАН</button>`
+            :`<button class="lb-act-btn ban" onclick="adminBan('${p.name}')">БАН</button>`
+          }
+          <button class="lb-act-btn kick" onclick="adminKick('${p.name}')">УДАЛИТЬ</button>
+          <button class="lb-act-btn give" onclick="adminGiveQuick('${p.name}')">+МОНЕТЫ</button>
+          <button class="lb-act-btn setcoins" onclick="adminSetPlayerCoins('${p.name}')">ЗАДАТЬ</button>
+        </div>`;
+      el.appendChild(div);
+    });
+  }catch(e){el.innerHTML='<div style="font-size:9px;color:var(--red);padding:8px">Ошибка: '+e.message+'</div>'}
+}
+
+async function adminBan(name){
+  try{
+    const r=await window.storage.get('lb:'+name,true);
+    if(!r) return;
+    const d=JSON.parse(r.value);d.banned=true;
+    await window.storage.set('lb:'+name,JSON.stringify(d),true);
+    addLog('🔴 [ADMIN] БАН: '+name);showNotif('[ADMIN] Забанен: '+name);
+    adminLoadPlayers();await lbPull();
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+async function adminUnban(name){
+  try{
+    const r=await window.storage.get('lb:'+name,true);
+    if(!r) return;
+    const d=JSON.parse(r.value);d.banned=false;
+    await window.storage.set('lb:'+name,JSON.stringify(d),true);
+    addLog('🔴 [ADMIN] РАЗБАН: '+name);showNotif('[ADMIN] Разбанен: '+name);
+    adminLoadPlayers();await lbPull();
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+async function adminKick(name){
+  if(!confirm('Удалить '+name+' из таблицы?')) return;
+  try{
+    await window.storage.delete('lb:'+name,true);
+    addLog('🔴 [ADMIN] УДАЛЁН: '+name);showNotif('[ADMIN] Удалён: '+name);
+    adminLoadPlayers();await lbPull();
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+async function adminGiveQuick(name){
+  const amt=parseFloat(prompt('Сколько монет выдать '+name+'?','1000000'))||0;
+  if(!amt) return;
+  try{
+    const r=await window.storage.get('lb:'+name,true);
+    if(!r){showNotif('Игрок не найден');return}
+    const d=JSON.parse(r.value);d.coins+=amt;
+    await window.storage.set('lb:'+name,JSON.stringify(d),true);
+    addLog('🔴 [ADMIN] Выдано '+fmt(amt)+' → '+name);showNotif('[ADMIN] +'+fmt(amt)+' → '+name);
+    adminLoadPlayers();await lbPull();
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+async function adminSetPlayerCoins(name){
+  const amt=parseFloat(prompt('Установить монеты для '+name+':','0'));
+  if(amt===null||isNaN(amt)) return;
+  try{
+    const r=await window.storage.get('lb:'+name,true);
+    if(!r){showNotif('Игрок не найден');return}
+    const d=JSON.parse(r.value);d.coins=amt;
+    await window.storage.set('lb:'+name,JSON.stringify(d),true);
+    addLog('🔴 [ADMIN] Монеты '+name+' = '+fmt(amt));showNotif('[ADMIN] '+name+' = '+fmt(amt)+' монет');
+    adminLoadPlayers();await lbPull();
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+
+async function adminGiveCoins(){
+  const name=document.getElementById('adm-give-name').value.trim();
+  const amt=parseFloat(document.getElementById('adm-give-coins').value)||0;
+  const status=document.getElementById('adm-give-status');
+  if(!name){status.textContent='⚠ Введи имя';status.style.color='var(--red)';return}
+  try{
+    const r=await window.storage.get('lb:'+name,true);
+    if(!r){status.textContent='⚠ Игрок "'+name+'" не найден';status.style.color='var(--red)';return}
+    const d=JSON.parse(r.value);d.coins+=amt;
+    await window.storage.set('lb:'+name,JSON.stringify(d),true);
+    status.textContent='✓ Выдано '+fmt(amt)+' → '+name;status.style.color='var(--green)';
+    addLog('🔴 [ADMIN] Выдано '+fmt(amt)+' → '+name);
+    setTimeout(()=>status.textContent='',3000);
+    await lbPull();
+  }catch(e){status.textContent='Ошибка: '+e.message;status.style.color='var(--red)'}
+}
+
+async function adminBroadcast(){
+  const msg=document.getElementById('adm-msg').value.trim();
+  if(!msg) return;
+  try{
+    await window.storage.set('admin:broadcast',JSON.stringify({text:msg,ts:Date.now()}),true);
+    addLog('🔴 [ADMIN] Broadcast: '+msg);showNotif('📢 Отправлено: '+msg);
+    document.getElementById('adm-msg').value='';
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+
+async function adminClearLB(){
+  if(!confirm('Очистить всю таблицу лидеров?')) return;
+  try{
+    const keys=await window.storage.list('lb:',true);
+    for(const k of (keys.keys||[])) await window.storage.delete(k,true).catch(()=>{});
+    addLog('🔴 [ADMIN] Таблица очищена');showNotif('[ADMIN] Таблица очищена');
+    lbData={};renderLB([]);adminLoadPlayers();
+  }catch(e){showNotif('Ошибка: '+e.message)}
+}
+
+// ══════════════════════════════════════════════
+// TICKS
+// ══════════════════════════════════════════════
+setInterval(()=>{
+  if(G.cps>0){const e=getECPS()/20;G.coins+=e;G.totalCoins+=e;G.allTimeCoins+=e}
+  maybeEvent();render();
+},50);
+
+// LB refresh every 5s + push my score
+setInterval(async()=>{
+  await lbPush();
+  await lbPull();
+},5000);
+
+setInterval(()=>document.getElementById('b-time').textContent=new Date().toLocaleTimeString('ru'),1000);
+
+// INIT
+addLog('🐹 HAMSTR запущен');
+addLog('ℹ Войди в таблицу лидеров — нажми Топ → введи имя');
+addLog('🔐 Admin: Ctrl+Shift+A');
+render();
+</script>
+</body>
+</html>
